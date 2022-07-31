@@ -32,6 +32,7 @@ yarn-error.log
 # Miscellaneous
 /.angular/cache
 .parcel-cache
+parcel-bundle-reports
 .sass-cache/
 /connect.lock
 /coverage

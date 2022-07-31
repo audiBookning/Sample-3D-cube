@@ -15,6 +15,6 @@ Uses
 
 ## Notes
 
-For such a simple use case (a rotating cube), using the above mentionned math and svg libraries is overboard. That can be seen just the bundle size produced. So the ideal would be to use custom code for those features.
+For such a simple use case (a rotating cube), using the above mentionned math and svg libraries is overboard. That can be seen just by the bundle size produced. So the ideal would be to use custom code for those features.
 
-But since this is just a test code, those considerations aren't really relevant.
+But since this is just a test/prototype code, those considerations aren't really relevant.

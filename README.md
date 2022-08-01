@@ -21,9 +21,9 @@ But since this is just a test/draf/prototype code to try to understand the techn
 
 As in everything else there is still much to be done.
 
-- The types are to complex and unreadable
+- The types are too complex and unreadable
 
-- The methods are all over the place and most should be private. Ineherience and composition needed.
+- The methods are all over the place. Ineherience and composition needed.
 
 - etc
 

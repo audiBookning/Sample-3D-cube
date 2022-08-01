@@ -1,4 +1,21 @@
 import { Vector4 } from '@math.gl/core';
+import { Polygon as SvgPolygon } from '@svgdotjs/svg.js';
+
+export interface SvgPolygonHash {
+  [key: string]: SvgPolygon;
+}
+
+export type ConstructorOptions = Object3DInput & SvgInput;
+
+export interface Object3DInput {
+  scale: number[];
+}
+
+export interface SvgInput {
+  svgWidth: number;
+  svgHeight: number;
+  rotation: number;
+}
 
 export interface NodeHash {
   [key: string]: NodeVector;

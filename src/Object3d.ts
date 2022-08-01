@@ -1,10 +1,26 @@
 import {
   configure as glConfigure,
   Matrix4,
+  NumericArray,
   toRadians,
   Vector4,
 } from '@math.gl/core';
-import { G, Polygon as SvgPolygon, SVG } from '@svgdotjs/svg.js';
+import {
+  G,
+  PointArrayAlias,
+  Polygon as SvgPolygon,
+  SVG,
+} from '@svgdotjs/svg.js';
+
+import {
+  Cube3d,
+  DisplayPolygonsRefNodes,
+  NodeHash,
+  NodeVector,
+  PolygonObj,
+  PolygonsRefNodes,
+  VectorHash,
+} from './types';
 
 interface SvgPolygonHash {
   [key: string]: SvgPolygon;
@@ -23,14 +39,14 @@ export class Object3d {
 
   // Geometries
   nodes: VectorHash;
-  polygons: PolygonObj[];
+  polygons: PolygonsRefNodes[];
 
   // Temp variables for Performance
-  polygonTemp: sortingPolygons[] = [];
+  polygonTemp: DisplayPolygonsRefNodes[] = [];
   tempVector: Vector4 = new Vector4();
 
   // Constants - Cube
-  scaleCONSTANT = 70;
+  scaleCONSTANT = 40;
   rotationRadians = toRadians(2);
   //shape_params = { scale: 2 };
 
@@ -40,8 +56,12 @@ export class Object3d {
   // utils - methods
   degToRad = (angle: number) => angle * this.DEG_TO_RAD;
   radToDeg = (angle: number) => angle * (180 / Math.PI);
+  draw: import("@svgdotjs/svg.js").Svg;
+  stretch: Matrix4;
 
-  constructor() {
+  constructor(scale: number[] = [1, 1, 1]) {
+    this.stretch = new Matrix4().scale(scale);
+
     this.fullTransform = this.getPerspectiveMatrix();
     this.rotateX = new Matrix4().rotateY(this.rotationRadians);
 
@@ -49,12 +69,22 @@ export class Object3d {
 
     const { points, polygons } = this.generateCube();
     this.nodes = points;
+    this.stretchPolygon();
     this.polygons = polygons;
     this.setPolygonColors();
 
-    const draw = SVG().addTo("body").size(300, 300);
+    this.draw = SVG();
+    this.draw.addTo("body").size(300, 300);
 
-    this.group = draw.group();
+    this.group = this.draw.group();
+  }
+
+  stretchPolygon() {
+    for (const key in this.nodes) {
+      if (Object.prototype.hasOwnProperty.call(this.nodes, key)) {
+        this.nodes[key] = this.nodes[key].transform(this.stretch);
+      }
+    }
   }
 
   setPolygonColors() {
@@ -65,18 +95,33 @@ export class Object3d {
     }
   }
 
-  drawPolygon = (polygonTemp: sortingPolygons) => {
-    if (!polygonTemp.color) throw new Error("No color found");
+  drawPolygon = (polygonTemp: DisplayPolygonsRefNodes) => {
+    if (!polygonTemp.color || !polygonTemp.id || !polygonTemp.nodes)
+      throw new Error("No color found");
+    /* const nodesArray: PointArrayAlias = this.convertHasToArray(
+      polygonTemp.nodes
+    ); */
     if (this.clearSvg) {
       const newPolygon = this.group
-        .polygon(polygonTemp.polygonPoints)
+        .polygon(polygonTemp.nodes)
         .fill(polygonTemp.color);
       this.svgPolygon[polygonTemp.id] = newPolygon;
     } else {
-      this.svgPolygon[polygonTemp.id].plot(polygonTemp.polygonPoints);
+      this.svgPolygon[polygonTemp.id].plot(polygonTemp.nodes);
       this.group.add(this.svgPolygon[polygonTemp.id]);
     }
   };
+
+  convertHasToArray(vectorHash: VectorHash | undefined): PointArrayAlias {
+    if (!vectorHash) return [];
+    const temp: NumericArray[] = [];
+
+    Object.keys(vectorHash).forEach(function (key) {
+      const point: NumericArray = vectorHash[key].toArray();
+      temp.push(point);
+    });
+    return temp as PointArrayAlias;
+  }
 
   drawPolygonArray = () => {
     this.polygonTemp.forEach((polygon, index) => {
@@ -103,42 +148,106 @@ export class Object3d {
 
   renderAndUpdate = () => {
     if (this.clearSvg) this.group.clear();
+    this.polygonTemp = [];
     this.rotatePolygon();
 
     this.sortPolygonArray();
 
     this.drawPolygonArray();
-    this.polygonTemp = [];
     this.clearSvg = false;
     requestAnimationFrame(this.renderAndUpdate);
   };
 
-  sortAndScreen(unConvertedPolygons: PolygonObj[]) {
-    // INFO: iterate over the polygons and get the scrren points and zIndex
-    for (let index = 0; index < unConvertedPolygons.length; index++) {
-      const newPolygon: NodeVector[] = [];
+  sortAndScreen() {
+    // INFO: iterate over the polygons and get the screen points and zIndex
+    for (let index = 0; index < this.polygons.length; index++) {
+      const ki = this.polygons[index] || {};
 
-      this.polygons[index].points.forEach((poly: number) => {
-        newPolygon.push(this.nodes[poly]);
-      });
-
-      const gtr: sortingPolygons = {
-        ...this.getPolygonPoints(newPolygon),
+      const newPolygonsRefNodes: DisplayPolygonsRefNodes = {
+        ...this.getPolygonPoints(ki),
         color: this.polygons[index].color,
         id: this.polygons[index].id,
+        order: this.polygons[index].order,
       };
-      this.polygonTemp.push(gtr);
+      this.polygonTemp.push(newPolygonsRefNodes);
     }
-    return this.polygonTemp;
   }
 
   sortPolygonArray() {
-    const polygonToSort: sortingPolygons[] = this.sortAndScreen(this.polygons);
+    this.sortAndScreen();
 
-    const polygonSorted: sortingPolygons[] = polygonToSort.sort((a, b) => {
-      return b.zIndex - a.zIndex;
+    // sort polygons by zIndex
+    this.polygonTemp = this.polygonTemp
+      //.filter((item): item is PolygonsRefNodes => !!item.zIndex)
+      .sort((a, b) => {
+        return (a.zIndex || 0) - (b.zIndex || 0);
+      });
+    //this.polygonTemp = polygonSorted;
+  }
+
+  getPolygonPoints(
+    polygonHash: PolygonsRefNodes
+  ): Partial<DisplayPolygonsRefNodes> {
+    let polygonPoints2: number[] = [];
+    let zIndex: number = 0;
+
+    //const hhhhh = Object.keys(polygonHash.nodes).sort((a, b) => polygonHash.order.indexOf(+a) - polygonHash.order.indexOf(+b));
+
+    const hhhhh = polygonHash.order.flatMap((index) => {
+      const vect = polygonHash.nodes[index];
+      const [pointX1, pointY1, PointZ] = this.getScreenCoordinates(vect);
+      zIndex += PointZ;
+      return [pointX1, pointY1];
     });
-    this.polygonTemp = polygonSorted;
+
+    /* for (const key in polygonHash) {
+      if (Object.prototype.hasOwnProperty.call(polygonHash, key)) {
+        const [pointX1, pointY1, PointZ] = this.getScreenCoordinates(
+          polygonHash[key]
+        );
+        zIndex += PointZ;
+        polygonPoints2 = [...polygonPoints2, pointX1, pointY1];
+      }
+    } */
+
+    return { nodes: hhhhh, zIndex: zIndex };
+  }
+
+  getNodesReferenceByPolygons(
+    polygons: PolygonObj[],
+    nodesVector: VectorHash
+  ): PolygonsRefNodes[] {
+    // INFO: iterate over the polygons and get the nodes reference
+    const PolygonsRef: PolygonsRefNodes[] = [];
+    for (const key in polygons) {
+      if (Object.prototype.hasOwnProperty.call(polygons, key)) {
+        const element = polygons[key];
+
+        const randomColor: string =
+          "#" + Math.floor(Math.random() * 16777215).toString(16);
+
+        const tempPolygon: PolygonsRefNodes = {
+          id: polygons[key].id,
+          nodes: {},
+          color: randomColor,
+          order: polygons[key].points,
+          zIndex: -200,
+        };
+        let zIndex: number = 0;
+        polygons[key].points.forEach((point) => {
+          zIndex += nodesVector[point].z;
+          tempPolygon.nodes = {
+            ...tempPolygon.nodes,
+            [point]: nodesVector[point],
+          };
+          //[point.toString() as keyof VectorHash] = this.nodes[point];
+        });
+        tempPolygon.zIndex = zIndex;
+        PolygonsRef.push(tempPolygon);
+      }
+    }
+
+    return PolygonsRef;
   }
 
   generateCube(): Cube3d {
@@ -187,7 +296,7 @@ export class Object3d {
 
     const nodesVector: VectorHash = this.convertToVect4(nodes);
 
-    const polygons: PolygonObj[] = [
+    const polygonObjects: PolygonObj[] = [
       { id: "0", points: [0, 1, 2, 3] },
       { id: "1", points: [1, 5, 6, 2] },
       { id: "2", points: [5, 4, 7, 6] },
@@ -196,9 +305,12 @@ export class Object3d {
       { id: "5", points: [3, 2, 6, 7] },
     ];
 
+    const polygonsRefNodes: PolygonsRefNodes[] =
+      this.getNodesReferenceByPolygons(polygonObjects, nodesVector);
+
     return {
       points: nodesVector,
-      polygons: polygons,
+      polygons: polygonsRefNodes,
     };
   }
 
@@ -213,7 +325,7 @@ export class Object3d {
     return converted;
   }
 
-  getScreenCoordinates(vector: Vector4 | number[]) {
+  getScreenCoordinates(vector: Vector4) {
     const transformV = this.fullTransform.transform(vector, this.tempVector);
 
     const [x, y, Z] = transformV;
@@ -224,7 +336,7 @@ export class Object3d {
     const fovy = Math.PI * 0.5;
     this.perspectiveMatrix = new Matrix4();
 
-    const perspective = this.perspectiveMatrix.perspective({
+    const perspective = this.perspectiveMatrix.orthographic({
       fovy,
       aspect: 1,
       near: 0,
@@ -238,51 +350,7 @@ export class Object3d {
     });
 
     const fullTransform = lookAt.scale(this.scaleCONSTANT);
+
     return fullTransform;
   }
-
-  getPolygonPoints(vectorArray: Vector4[] | any[]) {
-    let polygonPoints2: number[] = [];
-    let zArray: number = 0;
-    for (const vector of vectorArray) {
-      const [pointX1, pointY1, PointZ] = this.getScreenCoordinates(vector);
-      zArray += PointZ;
-      polygonPoints2 = [...polygonPoints2, pointX1, pointY1];
-    }
-
-    return { polygonPoints: polygonPoints2, zIndex: zArray };
-  }
-}
-
-interface NodeHash {
-  [key: string]: NodeVector;
-}
-
-interface NodeVector {
-  x: number;
-  y: number;
-  z: number;
-  w?: number;
-}
-
-interface Cube3d {
-  points: VectorHash;
-  polygons: PolygonObj[];
-}
-
-interface VectorHash {
-  [key: string]: Vector4;
-}
-
-interface PolygonObj {
-  points: Array<number>;
-  id: string;
-  color?: string;
-}
-
-interface sortingPolygons {
-  polygonPoints: number[];
-  zIndex: number;
-  color?: string;
-  id: string;
 }

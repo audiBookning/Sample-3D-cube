@@ -17,4 +17,14 @@ Uses
 
 For such a simple use case (a rotating cube), using the above mentionned math and svg libraries is overboard. That can be seen just by the bundle size produced. So the ideal would be to use custom code for those features.
 
-But since this is just a test/prototype code, those considerations aren't really relevant.
+But since this is just a test/draf/prototype code to try to understand the technology, those considerations aren't really that relevant.
+
+As in everything else there is still much to be done.
+
+- The types are to complex and unreadable
+
+- The methods are all over the place and most should be private. Ineherience and composition needed.
+
+- etc
+
+Some things aren't very logical and are there only to try to test the performance differences.

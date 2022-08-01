@@ -1,0 +1,50 @@
+import { Vector4 } from '@math.gl/core';
+
+export interface NodeHash {
+  [key: string]: NodeVector;
+}
+
+export interface NodeVector {
+  x: number;
+  y: number;
+  z: number;
+  w?: number;
+}
+
+export interface Cube3d {
+  points: VectorHash;
+  polygons: PolygonsRefNodes[];
+}
+
+export interface VectorHash {
+  [key: string]: Vector4;
+}
+
+export interface PolygonObj {
+  points: Array<number>;
+  id: string;
+  color?: string;
+}
+
+export interface SortingPolygons {
+  polygonPoints: number[];
+  zIndex?: number;
+  color?: string;
+  id: string;
+}
+
+export interface PolygonsRefNodes {
+  nodes: VectorHash;
+  zIndex: number;
+  color: string;
+  id: string;
+  order: number[];
+}
+
+export interface DisplayPolygonsRefNodes {
+  nodes?: number[];
+  zIndex?: number;
+  color?: string;
+  id?: string;
+  order: number[];
+}

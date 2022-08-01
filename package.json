@@ -14,8 +14,8 @@
     "typescript": "^4.7.4"
   },
   "scripts": {
-    "parcel": "npx parcel public/index.html",
-    "build": "parcel build public/index.html",
+    "parcel": "npx parcel public/*.html",
+    "build": "parcel build public/*.html",
     "analize": "parcel build public/index.html --reporter @parcel/reporter-bundle-analyzer",
     "lint": "eslint --ext .ts,.js src/**/*.ts src/**/*.js",
     "test": "jest",

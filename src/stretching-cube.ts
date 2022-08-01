@@ -1,6 +1,6 @@
 import { Object3d } from './Object3d';
 
-let obj3d: Object3d | null = new Object3d();
+let obj3d: Object3d | null = new Object3d([1.5, 1, 1]);
 
 obj3d.renderAndUpdate();
 //obj3d.render();

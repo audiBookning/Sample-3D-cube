@@ -15,6 +15,8 @@ Uses
 
 ## Notes
 
+I made a copy using angular at [Angular 3d basic samples code with Math-gl](https://github.com/audiBookning/math-gl-ng)
+
 For such a simple use case (a rotating cube), using the above mentionned math and svg libraries is overboard. That can be seen just by the bundle size produced. So the ideal would be to use custom code for those features.
 
 But since this is just a test/draf/prototype code to try to understand the technology, those considerations aren't really that relevant.
